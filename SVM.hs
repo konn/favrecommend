@@ -1,4 +1,6 @@
-module SVM (SVMT, SVM, runSVMT, runSVM, learn, judge) where
+module SVM ( SVMT, SVM, SVMState(..), (<.>)
+           , runSVMT, runSVM, learn
+           , judge, Document(..)) where
 import Data.Vector hiding (mapM_, zip, forM)
 import Prelude hiding (zipWith, sum, replicate, length, (++), map)
 import qualified Prelude as P
@@ -8,7 +10,6 @@ import Control.Monad.Identity
 import qualified Data.Vector.Mutable as MV
 import Control.Concurrent
 import Control.Applicative
-
 
 (<.>) :: Num a => Vector a -> Vector a -> a
 v1 <.> v2 = sum $ zipWith' 0 0 (*) v1 v2
@@ -29,7 +30,6 @@ zero len = replicate len 0
 
 
 data SVMState = SVMS { planeVector :: Vector Double
-                     , intercept :: Double
                      , eta :: Double
                      } deriving (Show, Eq, Ord)
 
@@ -42,7 +42,6 @@ type SVM = SVMT Identity
 
 runSVMT :: Monad m => SVMT m a -> m SVMState
 runSVMT act = execStateT act SVMS { planeVector = zero 0
-                                  , intercept = 0
                                   , eta = 0.01
                                   }
 
@@ -66,25 +65,8 @@ learn doc = do
 
 judge :: Monad m => Vector Double -> SVMT m Bool
 judge doc = do
-  SVMS {planeVector = w, intercept = b} <- get
+  SVMS {planeVector = w} <- get
   return $ (doc <.> w) >= 0
-
-main = do
-  src <- readFile "a1a.dat"
-  let docs = P.map (mkDoc . words) $ lines src
-  src' <- readFile "a1a.t.dat"
-  let tests = P.map (mkDoc . words) $ lines src'
-  runSVMT $ do
-    mapM_ learn docs
-    hoges <- forM (zip [1..] tests) $ \(i, doc) -> do
-      ans <- judge (feature doc)
-      when (ans /= (label doc == 1.0)) $ do
-        liftIO $ putStrLn $ "case #" P.++ show i
-        liftIO $ putStrLn $ "\t(default, answer) = " P.++ show (label doc, if ans then 1.0 else -1.0)
-      return (label doc, if ans then 1.0 else -1.0)
-    let trues = P.filter (uncurry (==)) hoges
-    liftIO $ putStrLn "===================="
-    liftIO $ putStrLn $ "accuracy rate: " P.++ show (100.0 * fromIntegral (P.length trues) / fromIntegral (P.length hoges)) P.++ "%"
 
 mkDoc :: [String] -> Document
 mkDoc (x:xs) = Document (create $ sub $ P.map split xs)
