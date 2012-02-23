@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TemplateHaskell #-}
 module Instances ( TwitterTime(..), lookup'
                  , lookupDeep, fromJSON', insertJS) where
 import Data.Traversable
@@ -16,6 +16,31 @@ import Control.Applicative
 import Control.Monad hiding (mapM)
 import Control.Arrow
 import Data.Maybe
+
+-- import SVM
+import Data.Binary
+
+{-
+instance Binary SVMState where
+  put (SVMS x1 x2) = put x1 >> put x2
+  get = SVMS <$> get <*> get
+-}
+
+instance Binary a => Binary (V.Vector a) where
+  put = put . V.toList
+  get = V.fromList <$> get
+
+instance Binary UTCTime where
+  put (UTCTime a b) = put a >> put b
+  get = UTCTime <$> get <*> get
+
+instance Binary Day where
+  put (ModifiedJulianDay d) = put d
+  get = ModifiedJulianDay <$> get
+
+instance Binary DiffTime where
+  put = put . fromEnum
+  get = toEnum <$> get
 
 resultToMaybe :: Data.Aeson.Result a -> Maybe a
 resultToMaybe (Success a) = Just a
